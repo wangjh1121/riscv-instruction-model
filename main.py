@@ -1,23 +1,13 @@
 from instructions import Instruction
 from dependency import InstructionDependency
 from generate_code import generate_asm
+from auto_generate import auto_generate_instructions
 
 def main():
     # 定义指令列表，按新格式
-    instructions = [
-        
-        Instruction(name="fmadd.d", inputs=["fa3", "fa2", "fa1"], output="fa4", rounding_mode="0"),
-        Instruction(name="fmsub.d", inputs=["fa4", "fa2", "fa1"], output="fa5", rounding_mode="0"),
-        Instruction(name="fnmusb.d", inputs=["fa5", "fa3", "fa2"], output="fa5", rounding_mode="0"),
-        Instruction(name="fnmadd.d", inputs=["fa4", "fa3", "fa1"], output="fa6", rounding_mode="0"),
-        Instruction(name="fadd.d", inputs=["fa3", "fa2"], output="fa4", rounding_mode="0"),
-        Instruction(name="feq.d", inputs=["fa4", "fa3"], output="fa5", rounding_mode="0"),
-        Instruction(name="fsqrt.d", inputs=["fa5"], output="fa6", rounding_mode="0"),
-        Instruction(name="fsub.d", inputs=["fa6", "fa2"], output="fa7", rounding_mode="0"),
-        Instruction(name="fld", inputs=["0(a0)"], output="fa1", rounding_mode="011"),
-        Instruction(name="fld", inputs=["24(a0)"], output="fa2", rounding_mode="011"),
-        Instruction(name="fsign_inject.d", inputs=["fa1", "fa2"], output="fa3", rounding_mode="010"),
-    ]
+    
+    instructions = []
+    instructions = auto_generate_instructions(15)
 
     # 创建依赖关系模型
     dep_model = InstructionDependency()
