@@ -1,89 +1,92 @@
 from random import choice
 from instructions import Instruction
+from d_extension import d_instruction_properties
+from v_extension import v_instruction_properties
 from typing import List
 
-# 示例寄存器前缀字典
-register_prefixes = {
-    "D_extension": "fa",  # 浮点扩展寄存器
-    "M_extension": "x",   # 整数扩展寄存器
-    "F_extension": "fa",  # 浮点扩展寄存器
-}
-
-# 定义指令类型与扩展类型的映射
-instruction_properties = {
-    "fmadd.d": {"inputs": 3, "outputs": 1, "extension": "D_extension"},
-    "fmsub.d": {"inputs": 3, "outputs": 1, "extension": "D_extension"},
-    "fadd.d": {"inputs": 2, "outputs": 1, "extension": "D_extension"},
-    "fsub.d": {"inputs": 2, "outputs": 1, "extension": "D_extension"},
-    "feq.d": {"inputs": 2, "outputs": 1, "extension": "D_extension"},
-    "fsqrt.d": {"inputs": 1, "outputs": 1, "extension": "D_extension"},
-    #"fld": {"inputs": 1, "outputs": 1, "extension": "M_extension"},
-    "fnmadd.d": {"inputs": 3, "outputs": 1, "extension": "F_extension"},
-    #"add": {"inputs": 2, "outputs": 1, "extension": "M_extension"},
-    #"mul": {"inputs": 2, "outputs": 1, "extension": "M_extension"},
-    #"fld": {"inputs": 1, "outputs": 1, "extension": "D_extension"}
-}
-
-def generate_register_pools(register_prefixes: dict, register_count: int = 7) -> dict:
+def generate_registers_from_types(input_type: str, output_type: str, register_count: int = 7) -> dict:
     """
-    根据给定的寄存器前缀和寄存器数量，生成不同类型的寄存器池。
+    根据输入和输出类型生成相应的寄存器名。
     
     参数:
-    register_prefixes (dict): 一个字典，其中包含扩展类型与其对应的寄存器前缀。
-    register_count (int): 每个扩展类型的寄存器数量，默认值为 7。
+    input_type (str): 输入寄存器的类型
+    output_type (str): 输出寄存器的类型
+    register_count (int): 每个类型的寄存器数量，默认是 7
     
     返回:
-    dict: 生成的寄存器池字典，包含每个扩展类型的输入和输出寄存器。
+    dict: 包含输入和输出寄存器的字典
     """
-    # 初始化 REGISTER_POOLS 字典
-    REGISTER_POOLS = {}
 
-    # 使用 for 循环来动态填充寄存器池
-    for extension_type, prefix in register_prefixes.items():
-        # 填充 inputs 和 outputs 列表
-        inputs = [f"{prefix}{i}" for i in range(1, register_count + 1)]  # 根据寄存器数量生成寄存器名
-        outputs = inputs  # 假设 outputs 与 inputs 相同
+    # 根据前缀生成寄存器名称
+    input_registers = [f"{input_type}{i}" for i in range(1, register_count + 1)]
+    output_registers = [f"{output_type}{i}" for i in range(1, register_count + 1)]
 
-        # 更新 REGISTER_POOLS
-        REGISTER_POOLS[extension_type] = {
-            "inputs": inputs,
-            "outputs": outputs
-        }
-
-    return REGISTER_POOLS
-
-def auto_generate_instructions(num_instructions: int) -> List[Instruction]:
-    """
-    自动生成指定数量的指令，每个指令的名称、输入、输出寄存器随机生成。
+    return {
+        "inputs": input_registers,
+        "outputs": output_registers
+    }
     
+def auto_generate_instructions(num_instructions: int, extension_type: str) -> list:
+    """
+    自动生成指定数量的指令，并为每条指令生成相应的寄存器。
+
     参数:
     num_instructions (int): 要生成的指令数量。
-    
+
     返回:
-    List[Instruction]: 生成的指令列表。
+    list: 生成的指令列表
     """
     instructions = []
-    register_pools = generate_register_pools(register_prefixes)  # 调用生成寄存器池函数
     
-    # 随机生成指令
+    if extension_type == ["D"]:  # D 扩展
+        for i in range(7):
+            inputs = [f"{8 * i}(a0)"] 
+            outputs = [f"fa{i+1}"]  
+            instructions.append(Instruction("fld", inputs, outputs, "Load"))
+            
+    elif extension_type == ["V"]:
+        inputs = [f"a0"]
+        outputs = [f"zero"]
+        instructions.append(Instruction("vsetvli", inputs, outputs , "e8", "mf8", "ta", "ma"))
+        
+    # 遍历生成指令
     for _ in range(num_instructions):
-        name = choice(list(instruction_properties.keys()))
-        input_count = instruction_properties[name]["inputs"]  # 根据指令名称选择输入数量
-        output_count = instruction_properties[name]["outputs"]  # 根据指令名称选择输出数量
-        extension = instruction_properties[name]["extension"]  # 获取扩展类型
+          # 如果扩展类型是 "D"，选择一个 "D" 扩展指令
+        if extension_type == ["D"]:  # D 扩展
+            name = choice(list(d_instruction_properties.keys()))
+            properties = d_instruction_properties[name]
+        elif extension_type == ["V"]:
+            name = choice(list(v_instruction_properties.keys()))
+            properties = v_instruction_properties[name]
+        else:
+            # 可以添加对其他扩展类型的处理
+            print(f"Unsupported extension type: {extension_type}")
+            continue  # 如果不支持该扩展类型，跳过
 
-        # 获取对应扩展类型的寄存器池
-        input_registers = register_pools[extension]["inputs"]  # 使用局部变量 register_pools
-        output_registers = register_pools[extension]["outputs"]
+        input_type = properties["inputs_type"]
+        output_type = properties["outputs_type"]
+        input_count = properties["inputs"]
+        output_count = properties["outputs"]
+        
+        extension = properties["extension"]
+        instr_type = properties["instr_type"]
+        rounding_mode = properties.get("rounding_mode", None) 
 
+        # 根据 input_type 和 output_type 选择寄存器
+        registers = generate_registers_from_types(input_type, output_type)
+        
         # 随机选择输入寄存器
-        inputs = [choice(input_registers) for _ in range(input_count)]
+        inputs = [choice(registers["inputs"]) for _ in range(input_count)]
 
         # 随机选择输出寄存器
-        outputs = [choice(output_registers) for _ in range(output_count)]
+        outputs = [choice(registers["outputs"]) for _ in range(output_count)]
 
-        # 创建指令并添加到列表
-        instruction = Instruction(name, inputs, outputs)
+        instruction = Instruction(name, inputs, outputs, instr_type, rounding_mode)
         instructions.append(instruction)
-    
+    if extension_type == ["D"]:  # D 扩展
+        for i in range(7):
+            inputs = [f"{8 * i}(a0)"]
+            outputs = [f"fa{i+1}"]  
+            instructions.append(Instruction("fsd", inputs, outputs, "Store"))
+
     return instructions
